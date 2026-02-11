@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Carréal v2 — Jeu de Stratégie</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep:     #070b14;
+            --bg-card:     #0d1526;
+            --bg-panel:    #111b33;
+            --border:      #1e2e55;
+            --neon-cyan:   #00f5d4;
+            --neon-pink:   #ff2d78;
+            --neon-yellow: #ffe600;
+            --neon-purple: #b44fff;
+            --neon-blue:   #2dd4ff;
+            --text-main:   #e8f0ff;
+            --text-dim:    #6a7fa8;
+            --grid-line:   rgba(45, 212, 255, 0.18);
+            --node-empty:  #1a2a4a;
+            --p1: #00f5d4; --p1-glow: rgba(0,245,212,0.35);
+            --p2: #ff2d78; --p2-glow: rgba(255,45,120,0.35);
+            --p3: #ffe600; --p3-glow: rgba(255,230,0,0.35);
+            --ai: #b44fff; --ai-glow: rgba(180,79,255,0.35);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: var(--bg-deep);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Background animated grid */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(45,212,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(45,212,255,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+            animation: gridShift 30s linear infinite;
+        }
+        @keyframes gridShift {
+            from { background-position: 0 0; }
+            to   { background-position: 40px 40px; }
+        }
+
+        /* ===== MENU ===== */
+        #menu-screen {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 680px;
+            animation: fadeIn 0.6s ease;
+        }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2.4rem, 6vw, 4rem);
+            font-weight: 900;
+            letter-spacing: 6px;
+            background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-blue) 50%, var(--neon-pink) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px rgba(0,245,212,0.4));
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+        @keyframes logoGlow {
+            0%,100% { filter: drop-shadow(0 0 20px rgba(0,245,212,0.4)); }
+            50%      { filter: drop-shadow(0 0 35px rgba(45,212,255,0.7)); }
+        }
+        .logo p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .menu-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px 26px;
+            margin-top: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .menu-card::before {
+            content: '';
+            position: absolute; top:0; left:0; right:0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+        }
+        .menu-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--neon-cyan);
+            margin-bottom: 14px;
+            opacity: 0.8;
+        }
+
+        .option-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .opt-btn {
+            flex: 1; min-width: 100px;
+            padding: 14px 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-dim);
+            font-family: 'Exo 2', sans-serif;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .opt-btn:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            background: rgba(0,245,212,0.06);
+            transform: translateY(-2px);
+        }
+        .opt-btn.selected {
+            border-color: var(--neon-cyan);
+            color: var(--bg-deep);
+            background: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0,245,212,0.4);
+            transform: scale(1.03);
+        }
+        .opt-btn small { font-size: 0.72rem; opacity: 0.8; display:block; }
+
+        .start-btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            border: none;
+            border-radius: 12px;
+            color: var(--bg-deep);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 30px rgba(0,245,212,0.3);
+            text-transform: uppercase;
+        }
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 50px rgba(0,245,212,0.5);
+        }
+        .start-btn:active { transform: scale(0.98); }
+
+        /* ===== GAME SCREEN ===== */
+        #game-screen {
+            display: none;
+            position: relative; z-index: 1;
+            width: 100%; max-width: 1140px;
+        }
+        #game-screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        .game-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .topbar-btn {
+            padding: 9px 18px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-dim);
+            font-family: 'Exo 2', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .topbar-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+        .topbar-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 auto;
+        }
+
+        .timer-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: var(--neon-cyan);
+            opacity: 0.8;
+            letter-spacing: 2px;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Score panels */
+        .scores-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .score-panel {
+            flex: 1; min-width: 130px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .score-panel::before {
+            content: '';
+            position: absolute; top:0; left:0; bottom:0;
+            width: 3px;
+        }
+        .score-panel.p1::before { background: var(--p1); box-shadow: 0 0 12px var(--p1); }
+        .score-panel.p2::before { background: var(--p2); box-shadow: 0 0 12px var(--p2); }
+        .score-panel.p3::before { background: var(--p3); box-shadow: 0 0 12px var(--p3); }
+        .score-panel.active {
+            border-color: currentColor;
+            transform: scale(1.03);
+            box-shadow: 0 0 20px var(--glow);
+        }
+        .score-panel.p1.active { --glow: var(--p1-glow); border-color: var(--p1); }
+        .score-panel.p2.active { --glow: var(--p2-glow); border-color: var(--p2); }
+        .score-panel.p3.active { --glow: var(--p3-glow); border-color: var(--p3); }
+
+        .sp-name { font-size: 0.82rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .sp-score-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .score-panel.p1 .sp-score-val { color: var(--p1); }
+        .score-panel.p2 .sp-score-val { color: var(--p2); }
+        .score-panel.p3 .sp-score-val { color: var(--p3); }
+        .sp-label { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+        .score-panel .turn-arrow {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.4rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .score-panel.active .turn-arrow { opacity: 1; animation: bounce 0.8s ease infinite; }
+        @keyframes bounce { 0%,100% { transform: translateY(-50%) translateX(0); } 50% { transform: translateY(-50%) translateX(4px); } }
+
+        /* Game board */
+        .board-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            overflow: auto;
+            max-height: 72vh;
+            position: relative;
+        }
+        #grid-container { display: inline-block; }
+
+        /* SVG / Nodes */
+        .grid-line { stroke: var(--grid-line); stroke-width: 1; }
+        .node { cursor: pointer; }
+        .node circle {
+            fill: var(--node-empty);
+            stroke: rgba(45,212,255,0.3);
+            stroke-width: 1.5;
+            transition: all 0.2s ease;
+        }
+        .node:not(.occupied):hover circle {
+            fill: rgba(45,212,255,0.25);
+            stroke: var(--neon-cyan);
+            stroke-width: 2.5;
+            filter: drop-shadow(0 0 6px var(--neon-cyan));
+        }
+        .node.danger:not(.occupied) circle {
+            stroke: var(--neon-pink) !important;
+            stroke-width: 2 !important;
+            fill: rgba(255,45,120,0.1) !important;
+            filter: drop-shadow(0 0 5px var(--neon-pink)) !important;
+        }
+        .node.occupied { cursor: not-allowed; }
+        .node.occupied:hover circle { filter: none !important; }
+
+        .node.p1 circle { fill: var(--p1); stroke: var(--p1); filter: drop-shadow(0 0 6px var(--p1)); }
+        .node.p2 circle { fill: var(--p2); stroke: var(--p2); filter: drop-shadow(0 0 6px var(--p2)); }
+        .node.p3 circle { fill: var(--p3); stroke: var(--p3); filter: drop-shadow(0 0 6px var(--p3)); }
+
+        @keyframes nodePlace {
+            0%  { r: 0; opacity: 0; }
+            60% { r: calc(var(--nr) * 1.5); opacity: 1; }
+            100% { r: var(--nr); opacity: 1; }
+        }
+        .node.just-placed circle {
+            animation: nodePlace 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+
+        .square-fill {
+            pointer-events: none;
+            opacity: 0;
+            animation: squareFadeIn 0.5s ease 0.1s forwards;
+        }
+        @keyframes squareFadeIn { to { opacity: 0.18; } }
+
+        .square-flash {
+            fill: none;
+            stroke: white;
+            stroke-width: 3;
+            pointer-events: none;
+            animation: squareFlash 0.7s ease-out forwards;
+        }
+        @keyframes squareFlash {
+            0%   { opacity: 1; stroke-width: 5; }
+            100% { opacity: 0; stroke-width: 10; }
+        }
+
+        /* Message bar */
+        .msg-bar {
+            margin-top: 14px;
+            padding: 14px 20px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .msg-bar::after {
+            content: '';
+            position: absolute; inset:0;
+            background: linear-gradient(90deg, transparent 0%, rgba(0,245,212,0.03) 50%, transparent 100%);
+            animation: scanLine 3s linear infinite;
+        }
+        @keyframes scanLine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+        .ai-thinking {
+            display: inline-flex; align-items: center; gap: 8px;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .ai-dots span {
+            display: inline-block; width: 6px; height: 6px;
+            background: var(--ai); border-radius: 50%;
+            animation: dotBounce 1.2s ease-in-out infinite;
+        }
+        .ai-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .ai-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
+        /* ===== WIN SCREEN ===== */
+        #win-screen {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(7,11,20,0.92);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s ease;
+        }
+        #win-screen.show { display: flex; }
+
+        .win-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 50px 60px;
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+        .win-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink), var(--neon-yellow));
+        }
+        .win-trophy { font-size: 4rem; margin-bottom: 16px; animation: trophy 1.5s ease-in-out infinite; }
+        @keyframes trophy { 0%,100% { transform: scale(1) rotate(-5deg); } 50% { transform: scale(1.1) rotate(5deg); } }
+        .win-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+        .win-subtitle { color: var(--text-dim); font-size: 1rem; margin-bottom: 30px; }
+        .win-scores {
+            display: flex; gap: 14px; justify-content: center;
+            margin-bottom: 30px; flex-wrap: wrap;
+        }
+        .ws-item {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 20px;
+            min-width: 100px;
+        }
+        .ws-name { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .ws-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+        }
+        .win-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            border: none; border-radius: 10px;
+            color: var(--bg-deep);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem; font-weight: 700;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            margin: 6px;
+        }
+        .win-btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,245,212,0.4); }
+        .win-btn.secondary {
+            background: var(--bg-panel);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+        .win-btn.secondary:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: none; }
+
+        /* Confetti canvas */
+        #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 101; }
+
+        /* ===== COMBO POPUP ===== */
+        .combo-popup {
+            position: fixed;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 0 20px rgba(255,230,0,0.8);
+            pointer-events: none;
+            z-index: 50;
+            animation: comboPop 1.2s ease-out forwards;
+        }
+        @keyframes comboPop {
+            0%   { transform: scale(0.5) translateY(0); opacity: 1; }
+            50%  { transform: scale(1.3) translateY(-40px); opacity: 1; }
+            100% { transform: scale(1) translateY(-80px); opacity: 0; }
+        }
+
+        /* ===== LAST MOVES ===== */
+        .last-moves {
+            margin-top: 12px;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .lm-label { font-weight: 700; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+        .lm-item {
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+        .lm-item.p1 { color: var(--p1); border-color: var(--p1); }
+        .lm-item.p2 { color: var(--p2); border-color: var(--p2); }
+        .lm-item.p3 { color: var(--p3); border-color: var(--p3); }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 3px;
+            background: var(--bg-panel);
+            border-radius: 2px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        /* hidden/show helpers */
+        .hidden { display: none !important; }
+
+        @media (max-width: 600px) {
+            .win-card { padding: 30px 20px; }
+            .win-title { font-size: 1.5rem; }
+            .scores-bar { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== MENU ===== -->
+<div id="menu-screen">
+    <div class="logo">
+        <h1>CARRÉAL</h1>
+        <p>Jeu de stratégie abstrait</p>
+    </div>
+
+    <div class="menu-card">
+        <h3>⚡ Mode de jeu</h3>
+        <div class="option-group">
+            <button class="opt-btn selected" data-mode="pvp" onclick="selectMode('pvp')">👥 2 Joueurs</button>
+            <button class="opt-btn" data-mode="pvp3" onclick="selectMode('pvp3')">👥👥 3 Joueurs</button>
+            <button class="opt-btn" data-mode="ai" onclick="selectMode('ai')">🤖 vs IA</button>
+        </div>
+    </div>
+
+    <div class="menu-card" id="diff-card" style="display:none">
+        <h3>🧠 Difficulté IA</h3>
+        <div class="option-group">
+            <button class="opt-btn selected" data-diff="1" onclick="selectDiff(1)">😊 Facile</button>
+            <button class="opt-btn" data-diff="2" onclick="selectDiff(2)">😐 Moyen</button>
+            <button class="opt-btn" data-diff="3" onclick="selectDiff(3)">😈 Difficile</button>
+            <button class="opt-btn" data-diff="4" onclick="selectDiff(4)">💀 Expert</button>
+        </div>
+    </div>
+
+    <div class="menu-card">
+        <h3>📐 Taille de la grille</h3>
+        <div class="option-group">
+            <button class="opt-btn" data-size="8" onclick="selectSize(8)">🟦 8×8<small>Rapide</small></button>
+            <button class="opt-btn selected" data-size="10" onclick="selectSize(10)">🟨 10×10<small>Standard</small></button>
+            <button class="opt-btn" data-size="12" onclick="selectSize(12)">🟧 12×12<small>Stratégie</small></button>
+            <button class="opt-btn" data-size="14" onclick="selectSize(14)">🟥 14×14<small>Expert</small></button>
+        </div>
+    </div>
+
+    <button class="start-btn" onclick="startGame()">▶ COMMENCER LA PARTIE</button>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen">
+    <div class="game-topbar">
+        <button class="topbar-btn" onclick="backToMenu()">← Menu</button>
+        <span class="topbar-title">CARRÉAL</span>
+        <div class="timer-display" id="timer">00:00</div>
+        <button class="topbar-btn" onclick="resetGame()">🔄 Rejouer</button>
+    </div>
+
+    <div class="scores-bar" id="scores-bar"></div>
+
+    <div class="board-wrapper">
+        <div id="grid-container"></div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+
+    <div class="msg-bar" id="msg-bar">Prêt !</div>
+
+    <div class="last-moves" id="last-moves">
+        <span class="lm-label">Derniers coups</span>
+        <span id="lm-items" style="display:flex;gap:6px;flex-wrap:wrap">—</span>
+    </div>
+</div>
+
+<!-- ===== WIN SCREEN ===== -->
+<div id="win-screen">
+    <canvas id="confetti"></canvas>
+    <div class="win-card">
+        <div class="win-trophy" id="win-trophy">🏆</div>
+        <div class="win-title" id="win-title">VICTOIRE !</div>
+        <div class="win-subtitle" id="win-subtitle">Partie terminée</div>
+        <div class="win-scores" id="win-scores"></div>
+        <div>
+            <button class="win-btn" onclick="resetGame(); closeWin();">🔄 Rejouer</button>
+            <button class="win-btn secondary" onclick="backToMenu(); closeWin();">← Menu</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG & STATE
+// ═══════════════════════════════════════════════════════
+const CFG = {
+    mode:       'pvp',
+    diff:       1,
+    gridSize:   10,
+    numPlayers: 2
+};
+
+let NODE_SPACING = 38;
+let NODE_RADIUS   = 7;
+const MARGIN = 22;
+
+const COLORS   = { 1: '#00f5d4', 2: '#ff2d78', 3: '#ffe600' };
+const AI_COLOR = '#b44fff';
+const P_NAMES_DEFAULT = { 1: '⬡ Joueur 1', 2: '⬡ Joueur 2', 3: '⬡ Joueur 3' };
+
+let state = {};
+let timerInterval = null;
+let timerSeconds  = 0;
+let lastMoves     = []; // [{player, row, col}]
+
+// ═══════════════════════════════════════════════════════
+//  AUDIO (Web Audio API — no external files needed)
+// ═══════════════════════════════════════════════════════
+let audioCtx = null;
+function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+function playTone(freq, type, dur, vol=0.15) {
+    try {
+        const ac = getAudio();
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = type; osc.frequency.setValueAtTime(freq, ac.currentTime);
+        gain.gain.setValueAtTime(vol, ac.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+        osc.start(ac.currentTime); osc.stop(ac.currentTime + dur);
+    } catch(e) {}
+}
+function sfxPlace()   { playTone(440,'sine',0.12); }
+function sfxSquare()  { 
+    playTone(660,'triangle',0.15,0.2);
+    setTimeout(()=>playTone(880,'triangle',0.15,0.2),100);
+    setTimeout(()=>playTone(1100,'triangle',0.2,0.2),200);
+}
+function sfxWin()     {
+    [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'triangle',0.3,0.2),i*120));
+}
+function sfxError()   { playTone(200,'sawtooth',0.1,0.08); }
+
+// ═══════════════════════════════════════════════════════
+//  MENU CONTROLS
+// ═══════════════════════════════════════════════════════
+function selectMode(mode) {
+    CFG.mode = mode;
+    CFG.numPlayers = mode === 'pvp3' ? 3 : 2;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('selected', b.dataset.mode === mode));
+    document.getElementById('diff-card').style.display = mode === 'ai' ? 'block' : 'none';
+}
+function selectDiff(d) {
+    CFG.diff = d;
+    document.querySelectorAll('[data-diff]').forEach(b => b.classList.toggle('selected', +b.dataset.diff === d));
+}
+function selectSize(s) {
+    CFG.gridSize = s;
+    NODE_SPACING = s<=8?48 : s<=10?38 : s<=12?32 : 27;
+    NODE_RADIUS  = s<=8?9  : s<=10?7  : s<=12?6  : 5;
+    document.querySelectorAll('[data-size]').forEach(b => b.classList.toggle('selected', +b.dataset.size === s));
+}
+
+function startGame() {
+    document.getElementById('menu-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.add('active');
+    initGame();
+}
+function backToMenu() {
+    stopTimer();
+    document.getElementById('menu-screen').classList.remove('hidden');
+    document.getElementById('game-screen').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME INIT
+// ═══════════════════════════════════════════════════════
+function initGame() {
+    stopTimer();
+    timerSeconds = 0;
+    lastMoves = [];
+    updateLastMovesUI();
+
+    const G = CFG.gridSize, N = CFG.numPlayers;
+    state = {
+        grid:          Array.from({length:G}, ()=>new Array(G).fill(0)),
+        cur:           1,
+        scores:        Object.fromEntries(Array.from({length:N},(_,i)=>[i+1,0])),
+        scoredSquares: new Set(),
+        over:          false,
+        totalMoves:    0,
+        aiThinking:    false,
+        numPlayers:    N
+    };
+
+    buildScoreBar();
+    buildGrid();
+    updateScores();
+    updateActivePlayer();
+    showMsg(getPlayerName(1) + ', c\'est à vous !');
+    startTimer();
+}
+function resetGame() { initGame(); }
+
+// ═══════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════
+function startTimer() {
+    timerInterval = setInterval(() => {
+        timerSeconds++;
+        const m = String(Math.floor(timerSeconds/60)).padStart(2,'0');
+        const s = String(timerSeconds%60).padStart(2,'0');
+        document.getElementById('timer').textContent = `${m}:${s}`;
+    }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+
+// ═══════════════════════════════════════════════════════
+//  UI BUILD
+// ═══════════════════════════════════════════════════════
+function getPlayerName(p) {
+    if (CFG.mode === 'ai') return p===1 ? '👤 Vous' : '🤖 IA';
+    return P_NAMES_DEFAULT[p];
+}
+function getPlayerColor(p) {
+    if (CFG.mode === 'ai' && p === 2) return AI_COLOR;
+    return COLORS[p];
+}
+
+function buildScoreBar() {
+    const bar = document.getElementById('scores-bar');
+    bar.innerHTML = '';
+    const N = CFG.numPlayers;
+    for (let i = 1; i <= N; i++) {
+        const div = document.createElement('div');
+        div.className = `score-panel p${i}`;
+        div.id = `sp-${i}`;
+        const col = getPlayerColor(i);
+        div.innerHTML = `
+            <div class="sp-name" style="color:${col}">${getPlayerName(i)}</div>
+            <div class="sp-score-val" id="score-${i}" style="color:${col}">0</div>
+            <div class="sp-label">carrés</div>
+            <span class="turn-arrow">▶</span>
+        `;
+        if (i === 1) div.classList.add('active');
+        bar.appendChild(div);
+    }
+}
+
+function buildGrid() {
+    const G = CFG.gridSize;
+    const W = (G-1)*NODE_SPACING + 2*MARGIN;
+    const H = (G-1)*NODE_SPACING + 2*MARGIN;
+
+    let svg = `<svg width="${W}" height="${H}" id="game-svg">`;
+
+    // Background subtle glow at center
+    svg += `<defs>
+        <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="rgba(45,212,255,0.06)"/>
+            <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>`;
+
+    // Grid lines
+    for (let i = 0; i < G; i++) {
+        const x = MARGIN + i*NODE_SPACING, y = MARGIN + i*NODE_SPACING;
+        svg += `<line class="grid-line" x1="${MARGIN}" y1="${y}" x2="${MARGIN+(G-1)*NODE_SPACING}" y2="${y}"/>`;
+        svg += `<line class="grid-line" x1="${x}" y1="${MARGIN}" x2="${x}" y2="${MARGIN+(G-1)*NODE_SPACING}"/>`;
+    }
+
+    svg += `<g id="sq-fills"></g>`;
+    svg += `<g id="sq-flashes"></g>`;
+    svg += `<g id="nodes">`;
+    for (let r = 0; r < G; r++) {
+        for (let c = 0; c < G; c++) {
+            const x = MARGIN + c*NODE_SPACING, y = MARGIN + r*NODE_SPACING;
+            svg += `<g class="node" id="node-${r}-${c}" data-r="${r}" data-c="${c}"
+                       onclick="onNodeClick(${r},${c})"
+                       onmouseenter="onNodeHover(${r},${c})"
+                       onmouseleave="onNodeLeave()">
+                <circle cx="${x}" cy="${y}" r="${NODE_RADIUS}" style="--nr:${NODE_RADIUS}px"/>
+            </g>`;
+        }
+    }
+    svg += `</g></svg>`;
+    document.getElementById('grid-container').innerHTML = svg;
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOVER — danger highlight
+// ═══════════════════════════════════════════════════════
+let hoverTimer = null;
+function onNodeHover(r, c) {
+    if (state.over || state.aiThinking || state.grid[r][c] !== 0) return;
+    // highlight danger cells (opponent's 3-corner threats)
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => {
+        const opponent = CFG.mode === 'ai' ? 2 : (state.cur === 1 ? 2 : 1);
+        const threats = getDangerCells(opponent);
+        document.querySelectorAll('.node').forEach(n => n.classList.remove('danger'));
+        threats.forEach(([tr,tc]) => {
+            const node = document.getElementById(`node-${tr}-${tc}`);
+            if (node && !node.classList.contains('occupied')) node.classList.add('danger');
+        });
+    }, 80);
+}
+function onNodeLeave() {
+    clearTimeout(hoverTimer);
+    document.querySelectorAll('.node.danger').forEach(n => n.classList.remove('danger'));
+}
+
+// Cells that would complete a square for a given player
+function getDangerCells(player) {
+    const G = CFG.gridSize, threats = new Set();
+    for (let r = 0; r < G; r++) {
+        for (let c = 0; c < G; c++) {
+            if (state.grid[r][c] !== 0) continue;
+            if (countSquaresForMove(r, c, player) > 0) threats.add(`${r},${c}`);
+        }
+    }
+    return [...threats].map(k => k.split(',').map(Number));
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME LOGIC
+// ═══════════════════════════════════════════════════════
+function onNodeClick(r, c) {
+    if (state.aiThinking || state.over) return;
+    if (CFG.mode === 'ai' && state.cur === 2) return;
+    playMove(r, c);
+}
+
+function playMove(r, c) {
+    if (state.over || state.grid[r][c] !== 0) { sfxError(); return; }
+
+    const player = state.cur;
+    state.grid[r][c] = player;
+    state.totalMoves++;
+    sfxPlace();
+    animateNodePlace(r, c, player);
+    recordMove(r, c, player);
+    updateProgress();
+
+    const formed = checkSquares(r, c);
+    if (formed > 0) {
+        state.scores[player] += formed;
+        updateScores();
+        sfxSquare();
+        showComboPopup(r, c, formed);
+        const pname = getPlayerName(player);
+        showMsg(`🎉 ${pname} forme ${formed} carré${formed>1?'s':''} ! Rejouez !`);
+    } else {
+        state.cur = (state.cur % state.numPlayers) + 1;
+        updateActivePlayer();
+        const next = getPlayerName(state.cur);
+        showMsg(`${next}, c'est à vous !`);
+    }
+
+    if (state.totalMoves === CFG.gridSize * CFG.gridSize) {
+        setTimeout(endGame, 400);
+        return;
+    }
+
+    if (CFG.mode === 'ai' && state.cur === 2 && !state.over) {
+        setTimeout(aiPlay, formed > 0 ? 500 : 800);
+    }
+}
+
+function animateNodePlace(r, c, player) {
+    const node = document.getElementById(`node-${r}-${c}`);
+    if (!node) return;
+    const col = getPlayerColor(player);
+    node.classList.add('occupied', `p${player}`);
+    node.querySelector('circle').style.fill   = col;
+    node.querySelector('circle').style.stroke = col;
+    node.querySelector('circle').style.filter = `drop-shadow(0 0 8px ${col})`;
+    node.classList.add('just-placed');
+    setTimeout(() => node.classList.remove('just-placed'), 400);
+}
+
+function checkSquares(r, c) {
+    const player = state.cur, G = CFG.gridSize;
+    let count = 0;
+    const maxSz = G - 1;
+    for (let sz = 1; sz <= maxSz; sz++) {
+        const corners = [
+            [r, c], [r-sz, c], [r, c-sz], [r-sz, c-sz]
+        ];
+        for (const [tr, tc] of corners) {
+            if (tr < 0 || tc < 0 || tr+sz >= G || tc+sz >= G) continue;
+            const key = `${tr},${tc},${sz}`;
+            if (state.scoredSquares.has(key)) continue;
+            if ( state.grid[tr][tc]       === player &&
+                 state.grid[tr][tc+sz]    === player &&
+                 state.grid[tr+sz][tc]    === player &&
+                 state.grid[tr+sz][tc+sz] === player ) {
+                state.scoredSquares.add(key);
+                count++;
+                drawSquare(tr, tc, sz, player);
+            }
+        }
+    }
+    return count;
+}
+
+function drawSquare(tr, tc, sz, player) {
+    const col = getPlayerColor(player);
+    const x1 = MARGIN + tc*NODE_SPACING, y1 = MARGIN + tr*NODE_SPACING;
+    const side = sz * NODE_SPACING;
+
+    const svg_fills  = document.getElementById('sq-fills');
+    const svg_flash  = document.getElementById('sq-flashes');
+
+    const fill = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    fill.setAttribute("class","square-fill");
+    fill.setAttribute("x",x1); fill.setAttribute("y",y1);
+    fill.setAttribute("width",side); fill.setAttribute("height",side);
+    fill.setAttribute("fill",col); fill.setAttribute("rx","4");
+    svg_fills.appendChild(fill);
+
+    const flash = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    flash.setAttribute("class","square-flash");
+    flash.setAttribute("x",x1); flash.setAttribute("y",y1);
+    flash.setAttribute("width",side); flash.setAttribute("height",side);
+    flash.setAttribute("stroke",col); flash.setAttribute("rx","4");
+    svg_flash.appendChild(flash);
+    setTimeout(() => flash.remove(), 700);
+}
+
+// ═══════════════════════════════════════════════════════
+//  COMBO POPUP
+// ═══════════════════════════════════════════════════════
+function showComboPopup(r, c, count) {
+    const svg = document.getElementById('game-svg');
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = rect.left + MARGIN + c*NODE_SPACING;
+    const y = rect.top  + MARGIN + r*NODE_SPACING;
+    const el = document.createElement('div');
+    el.className = 'combo-popup';
+    el.style.left = `${x}px`;
+    el.style.top  = `${y}px`;
+    el.textContent = count > 1 ? `+${count} 🔥 COMBO!` : `+1 ⭐`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPDATE UI
+// ═══════════════════════════════════════════════════════
+function updateScores() {
+    for (let i = 1; i <= state.numPlayers; i++) {
+        const el = document.getElementById(`score-${i}`);
+        if (el) el.textContent = state.scores[i] || 0;
+    }
+}
+function updateActivePlayer() {
+    for (let i = 1; i <= state.numPlayers; i++) {
+        const panel = document.getElementById(`sp-${i}`);
+        if (panel) panel.classList.toggle('active', i === state.cur);
+    }
+}
+function showMsg(html) { document.getElementById('msg-bar').innerHTML = html; }
+function updateProgress() {
+    const total = CFG.gridSize * CFG.gridSize;
+    const pct = (state.totalMoves / total * 100).toFixed(1);
+    document.getElementById('progress').style.width = pct + '%';
+}
+function recordMove(r, c, player) {
+    lastMoves.unshift({player, r, c});
+    if (lastMoves.length > 5) lastMoves.pop();
+    updateLastMovesUI();
+}
+function updateLastMovesUI() {
+    const container = document.getElementById('lm-items');
+    if (!container) return;
+    if (lastMoves.length === 0) { container.innerHTML = '—'; return; }
+    container.innerHTML = lastMoves.map(m => {
+        const col = getPlayerColor(m.player);
+        return `<span class="lm-item p${m.player}" style="color:${col};border-color:${col}">${String.fromCharCode(65+m.c)}${m.r+1}</span>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  END GAME
+// ═══════════════════════════════════════════════════════
+function endGame() {
+    state.over = true;
+    stopTimer();
+    sfxWin();
+
+    const scores = Object.entries(state.scores).sort((a,b)=>b[1]-a[1]);
+    const maxScore = scores[0][1];
+    const winners = scores.filter(s=>s[1]===maxScore);
+
+    // Win screen
+    const ws = document.getElementById('win-screen');
+    const title = document.getElementById('win-title');
+    const subtitle = document.getElementById('win-subtitle');
+    const scoresDiv = document.getElementById('win-scores');
+    const trophy = document.getElementById('win-trophy');
+
+    if (winners.length > 1) {
+        trophy.textContent = '🤝';
+        title.textContent = 'ÉGALITÉ !';
+        title.style.color = 'var(--neon-cyan)';
+        subtitle.textContent = `${maxScore} points chacun — belle partie !`;
+    } else {
+        const w = parseInt(winners[0][0]);
+        trophy.textContent = '🏆';
+        title.textContent  = getPlayerName(w) + ' GAGNE !';
+        title.style.color  = getPlayerColor(w);
+        subtitle.textContent = `Avec ${maxScore} carré${maxScore>1?'s':''} — bravo !`;
+    }
+
+    scoresDiv.innerHTML = scores.map(([p, sc]) => {
+        const col = getPlayerColor(+p);
+        return `<div class="ws-item" style="border-color:${col}30">
+            <div class="ws-name" style="color:${col}">${getPlayerName(+p)}</div>
+            <div class="ws-val" style="color:${col}">${sc}</div>
+        </div>`;
+    }).join('');
+
+    ws.classList.add('show');
+    launchConfetti();
+}
+
+function closeWin() {
+    document.getElementById('win-screen').classList.remove('show');
+    stopConfetti();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONFETTI
+// ═══════════════════════════════════════════════════════
+let confettiRAF = null;
+const CONF_COLORS = ['#00f5d4','#ff2d78','#ffe600','#b44fff','#2dd4ff','#ffffff'];
+let confettiParticles = [];
+
+function launchConfetti() {
+    const canvas = document.getElementById('confetti');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    confettiParticles = Array.from({length:120},(_,i)=>({
+        x: Math.random()*canvas.width,
+        y: -20 - Math.random()*200,
+        w: 8 + Math.random()*6,
+        h: 4 + Math.random()*4,
+        angle: Math.random()*Math.PI,
+        spin: (Math.random()-0.5)*0.2,
+        vx: (Math.random()-0.5)*4,
+        vy: 2 + Math.random()*4,
+        color: CONF_COLORS[i % CONF_COLORS.length],
+        opacity: 1
+    }));
+
+    function frame() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        confettiParticles = confettiParticles.filter(p=>p.y < canvas.height+40);
+        confettiParticles.forEach(p=>{
+            p.x += p.vx; p.y += p.vy;
+            p.angle += p.spin; p.vy += 0.1;
+            ctx.save();
+            ctx.translate(p.x,p.y); ctx.rotate(p.angle);
+            ctx.globalAlpha = p.opacity;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+            ctx.restore();
+        });
+        if (confettiParticles.length > 0) confettiRAF = requestAnimationFrame(frame);
+    }
+    confettiRAF = requestAnimationFrame(frame);
+}
+function stopConfetti() {
+    cancelAnimationFrame(confettiRAF);
+    const canvas = document.getElementById('confetti');
+    canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+}
+
+// ═══════════════════════════════════════════════════════
+//  AI ENGINE
+// ═══════════════════════════════════════════════════════
+function aiPlay() {
+    if (state.over || state.aiThinking) return;
+    state.aiThinking = true;
+    showMsg('<span class="ai-thinking">🤖 IA réfléchit… <span class="ai-dots"><span></span><span></span><span></span></span></span>');
+
+    const delay = CFG.diff >= 3 ? 900 : 600;
+    setTimeout(() => {
+        const move = getAIMove();
+        state.aiThinking = false;
+        if (move) playMove(move.r, move.c);
+    }, delay);
+}
+
+function getAIMove() {
+    const G = CFG.gridSize;
+    const aiPlayer = 2, humanPlayer = 1;
+
+    if (CFG.diff === 1) return rndMove();
+
+    if (CFG.diff === 2) {
+        if (Math.random() < 0.55) {
+            return strategicMove(aiPlayer, humanPlayer) || rndMove();
+        }
+        return rndMove();
+    }
+
+    if (CFG.diff === 3) {
+        return strategicMove(aiPlayer, humanPlayer) || rndMove();
+    }
+
+    // Diff 4: Expert — scored heuristic over all empty cells
+    return expertMove(aiPlayer, humanPlayer);
+}
+
+function rndMove() {
+    const G = CFG.gridSize, avail=[];
+    for (let r=0;r<G;r++) for (let c=0;c<G;c++) if (state.grid[r][c]===0) avail.push({r,c});
+    return avail.length ? avail[Math.floor(Math.random()*avail.length)] : null;
+}
+
+function strategicMove(ai, human) {
+    const G = CFG.gridSize;
+    // 1. Winning move (complete AI square)
+    for (let r=0;r<G;r++) for (let c=0;c<G;c++) {
+        if (state.grid[r][c]===0 && countSquaresForMove(r,c,ai)>0) return {r,c};
+    }
+    // 2. Block human
+    for (let r=0;r<G;r++) for (let c=0;c<G;c++) {
+        if (state.grid[r][c]===0 && countSquaresForMove(r,c,human)>0) return {r,c};
+    }
+    // 3. Position near own tokens
+    return positionMove(ai);
+}
+
+function expertMove(ai, human) {
+    const G = CFG.gridSize;
+    const center = (G-1)/2;
+    let best=null, bestScore=-Infinity;
+
+    for (let r=0;r<G;r++) {
+        for (let c=0;c<G;c++) {
+            if (state.grid[r][c]!==0) continue;
+            let score = 0;
+            // Immediate AI squares
+            const aiSq = countSquaresForMove(r,c,ai);
+            score += aiSq * 100;
+            // Blocked human squares
+            const huSq = countSquaresForMove(r,c,human);
+            score += huSq * 80;
+            // Future AI potential (3-corner threats)
+            score += countThreeCornerThreats(r,c,ai) * 25;
+            // Proximity to center
+            score -= (Math.abs(r-center)+Math.abs(c-center)) * 2;
+            // Neighbor bonus
+            if (hasNeighbor(r,c,ai)) score += 15;
+
+            if (score > bestScore) { bestScore=score; best={r,c}; }
+        }
+    }
+    return best || rndMove();
+}
+
+function countSquaresForMove(r, c, player) {
+    const G = CFG.gridSize;
+    let count = 0;
+    for (let sz=1; sz<=G-1; sz++) {
+        const corners = [[r,c],[r-sz,c],[r,c-sz],[r-sz,c-sz]];
+        for (const [tr,tc] of corners) {
+            if (tr<0||tc<0||tr+sz>=G||tc+sz>=G) continue;
+            const key = `${tr},${tc},${sz}`;
+            if (state.scoredSquares.has(key)) continue;
+            let ok = true;
+            for (const [cr,cc] of [[tr,tc],[tr,tc+sz],[tr+sz,tc],[tr+sz,tc+sz]]) {
+                const val = (cr===r && cc===c) ? player : state.grid[cr][cc];
+                if (val !== player) { ok=false; break; }
+            }
+            if (ok) count++;
+        }
+    }
+    return count;
+}
+
+function countThreeCornerThreats(r, c, player) {
+    const G = CFG.gridSize;
+    let threats = 0;
+    for (let sz=1;sz<G;sz++) {
+        const corners = [[r,c],[r-sz,c],[r,c-sz],[r-sz,c-sz]];
+        for (const [tr,tc] of corners) {
+            if (tr<0||tc<0||tr+sz>=G||tc+sz>=G) continue;
+            const allCorners = [[tr,tc],[tr,tc+sz],[tr+sz,tc],[tr+sz,tc+sz]];
+            let filled=0, empty=0;
+            for (const [cr,cc] of allCorners) {
+                if (cr===r&&cc===c) filled++;
+                else if (state.grid[cr][cc]===player) filled++;
+                else if (state.grid[cr][cc]===0) empty++;
+            }
+            if (filled===3 && empty===1) threats++;
+        }
+    }
+    return threats;
+}
+
+function positionMove(player) {
+    const G = CFG.gridSize, center=(G-1)/2;
+    const avail=[];
+    for (let r=0;r<G;r++) for (let c=0;c<G;c++) {
+        if (state.grid[r][c]!==0) continue;
+        const dist = Math.abs(r-center)+Math.abs(c-center);
+        const nb = hasNeighbor(r,c,player)?100:0;
+        avail.push({r,c,score:nb-dist});
+    }
+    if (!avail.length) return null;
+    avail.sort((a,b)=>b.score-a.score);
+    return avail[Math.floor(Math.random()*Math.min(4,avail.length))];
+}
+
+function hasNeighbor(r, c, player) {
+    const G = CFG.gridSize;
+    for (const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+        const nr=r+dr, nc=c+dc;
+        if (nr>=0&&nr<G&&nc>=0&&nc<G&&state.grid[nr][nc]===player) return true;
+    }
+    return false;
+}
+</script>
+</body>
+</html>
